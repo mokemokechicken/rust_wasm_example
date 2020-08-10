@@ -4,6 +4,7 @@
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
   </head>
   <body>
+    <div id="display"></div>
     <!-- Note the usage of `type=module` here as this is an ES6 module -->
     <script type="module">
       // Use ES module import syntax to import functionality from the module
@@ -17,7 +18,8 @@
 
       async function run() {
         await init();
-        wasm.output_log("Wasm!");
+        const myApp = wasm.MyApp.new({name: "mokemoke", email: "hello@example.com"});
+        myApp.show_status("display");
       }
       run();
     </script>
