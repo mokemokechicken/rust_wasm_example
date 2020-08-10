@@ -1,25 +1,3 @@
-はじめに
-========
-RustにもWebAssembly(以降wasmと呼ぶ)にも興味はあるが、馴染みがない今日このごろ。Rustでwasmをやってみれば一石二鳥なんじゃあないか！？と思って始めてみました。
-やってみると、Hello World的なものは意外とすぐにできたのですが、 AnimationLoop しようとしたり、データをHTTPでFetchしようとしたりするとなかなか尋常じゃなく躓きました（それぞれ１日くらい解決までかかった...)。
-Rustも発展途上でちょいちょい言語仕様も変わっているので、過去のWebの記事通りでは動かなかったり、そもそもRustへの理解が足りてなかったりするのですが、自分用のメモ兼もしかしたら誰かの参考になるかもしれないので、何回かに分けてざっくりこれまで理解したことを書いておこうと思います。
-
-## Version
-これから示すコードが動くかどうかについて、RustやcrateのVersionはおそらくとても大事です。
-
-OSはMacでもWindowsでもLinuxでもあまり差はないと思います。
-ブラウザもいわゆるモダンなブラウザなら大丈夫だと思います。IEだとダメかもしれない。Edgeはどうなのかな。(`<script type="module">`みたいなので動くかどうかで、うまくいかない場合は他の方法を使えばwasm自体は動くと思います)。
-
-- rustc 1.45.2 (d3fb005a3 2020-07-31): [Install方法](https://www.rust-lang.org/tools/install)
-- wasm-pack 0.9.1: [Install方法](https://rustwasm.github.io/wasm-pack/installer/)
-- crate
-    - [wasm-bindgen](https://github.com/rustwasm/wasm-bindgen) = "0.2.67"
-    - [js-sys](https://rustwasm.github.io/wasm-bindgen/api/js_sys/) = "0.3.44"
-    - [web-sys](https://rustwasm.github.io/wasm-bindgen/api/web_sys/) = "0.3.44"
-- MacOS: 10.15.6
-- Google Chrome: 84.0.4147.105
-- Python3 (単純なHttpServer用)
-
 # consoleにログを出してみる
 まあ、まずはとにかく動くようにするところからですが、それは拍子抜けするほど簡単でした。端的にいうと以下のファイルを用意しておけばOKです。(Makefileは別にいらんけど)。
 
@@ -32,7 +10,7 @@ OSはMacでもWindowsでもLinuxでもあまり差はないと思います。
     └── lib.rs
 ```
 
-[コード全体はこれ](https://github.com/mokemokechicken/rust_wasm_example/tree/master/example1)です。一つずつみていきます。
+一つずつみていきます。
 
 ## Cargo.toml
 主に使用するcrateなどの宣言をするところですが、最初はとにかくこう書いておけ、という感じではあります。以下の３つのcrateを使用しますが、私の理解では、
@@ -175,9 +153,3 @@ Serving HTTP on 0.0.0.0 port 8082 ...
 ```
 
 こんな表示になって、http://localhost:8082/ にアクセスしてみて、consoleを開いてログが表示されていれば成功となります。
-
-# さいごに
-いちいち書くと長いですね。
-でも、わりと簡単にここまではできるんだなーと思いました。
-
-だがしかし(Rust初心者にとって)大変なのはこれからでした。
