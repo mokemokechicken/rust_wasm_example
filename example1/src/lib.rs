@@ -1,5 +1,4 @@
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 use web_sys::console::log_1;
 
 fn log(s: &String) {
@@ -7,6 +6,6 @@ fn log(s: &String) {
 }
 
 #[wasm_bindgen]
-pub fn output_log(s: &String) {
-    log(s);
+pub fn output_log(s: &str) {
+    log(&format!("Hello {}", s));
 }
