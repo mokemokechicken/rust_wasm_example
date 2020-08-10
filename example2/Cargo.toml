@@ -12,7 +12,6 @@ wasm-bindgen = { version = "0.2.67", features = ["serde-serialize"] }
 js-sys = "0.3.44"
 serde = { version = "1.0", features = ["derive"] }
 
-
 [dependencies.web-sys]
 version = "0.3.44"
 features = [
