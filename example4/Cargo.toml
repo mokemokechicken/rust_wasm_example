@@ -1,0 +1,22 @@
+[package]
+name = "rust_wasm_example"
+version = "0.1.0"
+authors = ["mokemokechicken"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2.67", features = ["serde-serialize"] }
+js-sys = "0.3.44"
+serde = { version = "1.0", features = ["derive"] }
+
+[dependencies.web-sys]
+version = "0.3.44"
+features = [
+  'Window',
+  'Document',
+  'HtmlDivElement',
+  'console',
+]
