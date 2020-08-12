@@ -70,6 +70,7 @@ impl MyApp {
         // Future は RustのNativeっぽい型、 JsFuture::from(promise) で Promise->Future に変換される
         let future = JsFuture::from(request_promise)
             // async {} は Future を返すので .and_then でつなげることができる
+            // ここは move は不要。あっても問題はない。
             .and_then(|resp_value| async {
                 // `resp_value` is a `Response` object.
                 assert!(resp_value.is_instance_of::<Response>());

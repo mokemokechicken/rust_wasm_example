@@ -1,164 +1,209 @@
-はじめに
-========
-## Crates
-今回使うcrateたちはこんな感じになっています。
-- `wasm-bindgen` の features が増えた
-- `serde` が登場
-- `web-sys` の features に `Window`, `Document`, `HtmlDivElement` が増えた
+# はじめに
+今回は、アプリケーションを作っていてよくやるような「HTTPでJSONデータをFetchしてきてPropertyに保存する」ことをやってみます。
 
-```Cargo.toml
-...略
+JSなら数行でかけるようなこんなことが、結構難航しました。わかってしまえば、柔軟にいろいろな型にも対応できるしライブラリ化したりも簡単そうですが、わかるまでが大変なんですよね、、、こういうの。
+
+# 内容
+## コード
+### Cargo.toml
+- `wasm-bindgen-futures`, `futures` と Future関連が追加
+- `web-sys` から `Headers`, ..., `Response` などのHTTP関連のものが追加
+
+```toml:Cargo.toml
 [dependencies]
 wasm-bindgen = { version = "0.2.67", features = ["serde-serialize"] }
 js-sys = "0.3.44"
 serde = { version = "1.0", features = ["derive"] }
+#
+wasm-bindgen-futures = "0.4.17"
+futures = "0.3.5"
 
 [dependencies.web-sys]
 version = "0.3.44"
 features = [
   'Window',
-  'Document',
-  'HtmlDivElement',
   'console',
+  # HTTP
+  'Headers',
+  'Request',
+  'RequestInit',
+  'RequestMode',
+  'Response',
 ]
 ```
 
-# 内容
-## Rust側に状態をもたせる
-いくつか方法はありそうですが、一番シンプルだと思うのは、JS側でRustのObjectを生成し、保持させておくことかなと思います。JS側としても特に違和感のないところです。
+### lib.rs
+いくつかポイントというかハマったところがあります。
 
-例えば、以下のようにRust側をしておきます。
+#### load_data() 自体を async にすると、取得したデータを selfに保存しようとしてハマる
+
+たぶん、それが原因だったと記憶していますが、 `async fn load_data(&mut self)` みたいにすると、lifetimeか何かの問題で上手くいかないです。
+※ 今から再現するために書き戻す気がしないので、最終的な確認はしていないですが...
+
+なので、 load_data() みたいな非同期的処理をする場合、 Promise や Future をreturnすることにして、そのFunction自体は asyncにはしない方がよさそうです。
+
+#### `Rc<RefCell<型>>` を活用する
+[スマートポインタ](https://doc.rust-jp.rs/book/second-edition/ch15-00-smart-pointers.html) の説明の先にこの使い方が載っています。
+仕組みや詳しい使い方は読んでもらうとして、「実行時の自己責任において、mutなpointerを複製できちゃう＆値も更新できちゃう方法」です。 Closureのようにlifetimeが不明な処理が、その内部で外側のObjectの更新を可能にするためのほぼ必須な技なんじゃないかと思います。
 
 ```rust
-#[wasm_bindgen]   // これ大事
 pub struct MyApp {
-    age: u32,
+    team: Rc<RefCell<Option<Team>>>,
 }
 
-#[wasm_bindgen]  // この中のpubメソッドはJSから呼べるようになる。
-impl MyApp {
-    pub fn new(age: u32) -> MyApp {
-        MyApp { age }
-    }
+...
+fn load_data(&mut self) {
+  let ptr_for_update = self.team.clone();
+  ...
+  (in closure)
+    *ptr_for_update.borrow_mut() = <value>;
 }
 ```
 
-で、 JS側で `MyApp.new()` を呼ぶとRust側のObjectをKeepできます。
+みたいなのがパターンかなと思います。
 
-```javascript
-const myApp = wasm.MyApp.new(88);
-console.log(myApp.age);  // -> 88
-```
 
-## JS ObjectをRustに渡す
-例えば、各種設定のようなものをまとめてRust側に渡したいときに
+#### Promise -> Future に変換して処理をつなげる
+`window.fetch_with_request(&request)` とか `response.json()` みたいな web_sys側の機能は Promise を返すようです。それを `JsFuture::from(promise)` という感じで Future に変換すると、色々書きやすい感じがあります。
 
-```javascript
-const myApp = MyApp.new({"key1": value1, "key2": value2});
-```
 
-みたいにやりたい。全部指定するのは面倒なので default値も設定しておきたい。
+<details>
+<summary>Rustコード全体</summary>
+<div>
 
-という場合があります。
-以下のようにやると、だいぶイメージに近い感じになりました。
+```rust:lib.rs
+use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::console::log_1;
+//
+use core::cell::RefCell;
+use futures::prelude::*;
+use js_sys::Promise;
+use std::rc::Rc;
+use wasm_bindgen_futures::{future_to_promise, JsFuture};
+use web_sys::{Request, RequestInit, RequestMode, Response};
 
-```rust
-use serde::{Serialize, Deserialize};
+fn log(s: &String) {
+    log_1(&JsValue::from(s));
+}
 
 #[derive(Serialize, Deserialize)]
-pub struct MyAppOptions {
+pub struct Team {
     pub name: String,
-    pub age: Option<u32>,
-    pub email: Option<String>,
+    pub members: Vec<Member>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Member {
+    pub name: String,
+    pub age: u32,
+    pub role: String,
 }
 
 #[wasm_bindgen]
 pub struct MyApp {
-    name: String,
-    age: u32,
-    email: Option<String>,
+    team: Rc<RefCell<Option<Team>>>,
 }
 
 #[wasm_bindgen]
 impl MyApp {
-    pub fn new(options: JsValue) -> MyApp {
-        let opts: MyAppOptions = options.into_serde().unwrap();
+    pub fn new() -> MyApp {
         MyApp {
-            name: opts.name,
-            age: opts.age.unwrap_or(18),  // default値で埋めておく場合
-            email: opts.email,            // Option のままの場合
+            // Rc<RefCell<任意のデータ>> というのはRustでよくある使い方
+            // https://doc.rust-jp.rs/book/second-edition/ch15-00-smart-pointers.html
+            // ここのスマートポインタの部分をよく読むと良い。
+            team: Rc::new(RefCell::new(None)),
+        }
+    }
+
+    // この関数自体を async にすると &mut selfの辺りが上手くいかない(確か)。
+    // selfをClosureにcaptureさせずに 更新したい部分を Rc<RefCell> で capture させるのが良さそう。
+    // この関数自体はPromiseをreturnさせる。
+    pub fn load_data(&mut self, path: String) -> Promise {
+        // Closureの中で更新するために Rc のスマートポインタで株分けしておく
+        // のちに *ptr_for_update.borrow_mut() = ... で更新できるようになる。
+        // borrow_mut() は unsafe らしいので  実行時にエラーになることはありえる。
+        // まあ、しかし、例えば初回に１回だけ実行するような場合ではまったく問題にならないだろう。
+        let ptr_for_update = self.team.clone();
+
+        // HTTP アクセスのための準備
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+        opts.mode(RequestMode::Cors);
+        let request = Request::new_with_str_and_init(&path, &opts).unwrap();
+        request
+            .headers()
+            .set("Accept", "application/octet-stream")
+            .unwrap();
+        let window = web_sys::window().unwrap();
+        let request_promise: Promise = window.fetch_with_request(&request);
+        // ↑ ここまではお約束
+
+        // Promise -> Future を繰り返す感じになる。 web_sysの methodが Promiseを返すから?
+        // Future は RustのNativeっぽい型、 JsFuture::from(promise) で Promise->Future に変換される
+        let future = JsFuture::from(request_promise)
+            // async {} は Future を返すので .and_then でつなげることができる
+            .and_then(|resp_value| async {
+                // `resp_value` is a `Response` object.
+                assert!(resp_value.is_instance_of::<Response>());
+                let resp: Response = resp_value.dyn_into().unwrap();
+                resp.json()
+            })
+            // ここは別の書き方もあるのかな...? でも流れ的にこうかくことにする。
+            .and_then(|value: Promise| JsFuture::from(value))
+            // async move {} と書くのがポイント
+            // move とすると、closure内でcaptureしている ptr_for_update の所有権を外から奪うことになり、
+            // *ptr_for_update.borrow_mut() = ... が使えるようになる。
+            // 当然 move を削るとコンパイルエラーになる。
+            .and_then(|json| async move {
+                let team: Team = json.into_serde().unwrap(); // team: Team と型を明示するのがポイント
+                *ptr_for_update.borrow_mut() = Some(team);
+                Ok(JsValue::from("load_data success!"))
+            });
+        future_to_promise(future) // Promise としてreturnするので JS側から await や .then() などで呼ぶ。
+    }
+
+    pub fn show_team_info(&self) {
+        if let Some(team) = self.team.borrow().as_ref() {
+            log(&format!("Team Name={}", &team.name));
+            for member in &team.members {
+                log(&format!(
+                    "name={}, age={}, role={}",
+                    &member.name, member.age, &member.role
+                ));
+            }
+        } else {
+            log(&format!("There is no team."));
         }
     }
 }
 ```
 
-ポイントは、
+</div></details>
 
-```rust
-let opts: MyAppOptions = options.into_serde().unwrap();
-```
+### index.html
+こんな感じで
+`await myApp.load_data()` とか `myApp.load_data().then(function ...)` みたいに使うことができます。一応、こうかければ、初期化処理が終わったらメインループを始めるみたいなことをJS側にやらせれば全体としては困らないかなと思います。
 
-の辺りかな。 `MyAppOptions` に `#[derive(Serialize, Deserialize)]` がついているので `JsValue` からこの構造体に値をうつしてくれます。
-
-呼び出すJS側は、以下のように書くことができます。
+ユーザのActionに応じて任意のタイミングで通信が発生するような場合だと、もう少し気を使わないといけないかもしれないですが。
 
 ```javascript
-const myApp = wasm.MyApp.new({name: "mokemoke", email: "hello@example.com", other: 88});
+      async function run() {
+        await init();
+        const myApp = wasm.MyApp.new();
+
+        myApp.show_team_info(); // -> There is no team.
+
+        const ret = await myApp.load_data("data.json");
+        console.log(ret); // -> load data success!
+
+        myApp.show_team_info(); // -> Team Name=Cats ...
+      }
+      run();
 ```
 
-`age` が省略できていることと、 `other`という関係ないKeyがあってもエラーにならないことがポイントです。
+さいごに
+======
 
-## DOMにアクセスする
-DOMにアクセスするには web_sys の ものを色々使います。
-`Window`や`Document`にはよくアクセスするので以下のようなショートカットを作っておくとちょっとだけ便利です。
-
-```rust
-fn window() -> web_sys::Window {
-    web_sys::window().expect("no global `window` exists")
-}
-
-fn document() -> web_sys::Document {
-    window()
-        .document()
-        .expect("should have a document on window")
-}
-```
-
-`document.getElementById()` などをRustで書くとこんな感じになります。
-
-```rust
-
-fn get_element_by_id<T: JsCast>(id: &str) -> T {
-    document()
-        .get_element_by_id(id)
-        .expect("not found")
-        .dyn_into::<T>()
-        .map_err(|_| ())
-        .unwrap()
-}
-```
-
-この `.dyn_into::<型>()` とかはJs系のCastをするときに結構出てきます。
-
-で、
-例えば、指定したdiv要素のinner_textを更新するにはこんな感じにかけば良いです。
-
-```rust
-#[wasm_bindgen]
-impl MyApp {
-    pub fn show_status(&self, div_id: &str) {
-        let div: web_sys::HtmlDivElement = get_element_by_id(div_id);
-        div.set_inner_text(&format!("name={}, age={}, email={}",
-                                    self.name,
-                                    self.age,
-                                    self.email.as_ref().unwrap_or(&"".into()) // 野暮ったい...
-        ));
-    }
-}
-```
-
-それぞれどういうMethodがあるかは [web_sysのAPI Document](https://docs.rs/web-sys/0.3.44/web_sys/struct.HtmlDivElement.html) などを見ると良いです。
-
-# さいごに
-
-なんか、 unwrap() したり dyn_into() したり、serdeがどうこうしたり、、と慣れるまで何がなんだかわかりません。今もよくわかってないところも多いですが、コンパイラのエラーメッセージ（これが結構親切なのがとても助かる）を見ながら治せるくらいにはなってきました。
+少しRustを理解してきた気がしますが、まだまだ先は長そうです。

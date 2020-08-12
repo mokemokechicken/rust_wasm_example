@@ -26,3 +26,4 @@ Contents
 - example1: [consoleにログをだしてみる](example1/)
 - example2: [DOMアクセス & JS ObjectをRustに渡す](example2/)
 - example3: [Context2d でアニメーションしてみる](example3/)
+- example4: [JsonデータをFetchしてselfの値を更新する](example4/)
