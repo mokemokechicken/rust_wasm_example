@@ -18,8 +18,14 @@
 
       async function run() {
         await init();
-        const myApp = wasm.MyApp.new({name: "mokemoke", email: "hello@example.com", other: 88});
-        myApp.show_status("display");
+        const myApp = wasm.MyApp.new();
+
+        myApp.show_team_info(); // -> There is no team.
+
+        const ret = await myApp.load_data("data.json");
+        console.log(ret); // -> load data success!
+
+        myApp.show_team_info(); // -> Team Name=Cats ...
       }
       run();
     </script>

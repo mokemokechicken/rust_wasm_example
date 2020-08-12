@@ -1,0 +1,20 @@
+{
+  "name": "Cats",
+  "members": [
+    {
+      "name": "Takashi",
+      "age": 88,
+      "role": "manager"
+    },
+    {
+      "name": "Michiko",
+      "age": 77,
+      "role": "assistant"
+    },
+    {
+      "name": "Ai",
+      "age": 22,
+      "role": "thief"
+    }
+  ]
+}
