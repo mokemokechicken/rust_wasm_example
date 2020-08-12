@@ -1,47 +1,17 @@
 mod vec2d;
+mod dom_util;
+
+use vec2d::Vec2d;
+use dom_util::*;
 
 use wasm_bindgen::prelude::*;
 use web_sys::console::log_1;
-use wasm_bindgen::JsCast;
 use serde::{Serialize, Deserialize};
-use vec2d::Vec2d;
 use rand::Rng;
 
 
 fn log(s: &String) {
     log_1(&JsValue::from(s));
-}
-
-fn window() -> web_sys::Window {
-    web_sys::window().expect("no global `window` exists")
-}
-
-fn document() -> web_sys::Document {
-    window()
-        .document()
-        .expect("should have a document on window")
-}
-
-fn get_element_by_id<T: JsCast>(id: &str) -> T {
-    document()
-        .get_element_by_id(id)
-        .expect("not found")
-        .dyn_into::<T>()
-        .map_err(|_| ())
-        .unwrap()
-}
-
-fn canvas(canvas_id: &str) -> web_sys::HtmlCanvasElement {
-    get_element_by_id(&canvas_id)
-}
-
-fn context2d(canvas_id: &str) -> web_sys::CanvasRenderingContext2d {
-    canvas(canvas_id)
-        .get_context("2d")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap()
 }
 
 #[derive(Clone)]
