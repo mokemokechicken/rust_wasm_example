@@ -6,7 +6,10 @@ use vec2d::Vec2d;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 use web_sys::console::log_1;
 
 fn log(s: &String) {
@@ -117,6 +120,26 @@ impl MyApp {
         self.render();
         true
     }
+}
+
+fn request_animation_frame(f: &Closure<dyn FnMut(f64)>) {
+    window()
+        .request_animation_frame(f.as_ref().unchecked_ref())
+        .expect("should register `requestAnimationFrame` OK");
+}
+
+#[wasm_bindgen]
+pub fn start_animation(app: MyApp) -> Result<(), JsValue> {
+    let closure_owner_captured = Rc::new(RefCell::new(None));
+    let closure_owner = closure_owner_captured.clone();
+    let app_holder_captured = Rc::new(RefCell::new(app));
+
+    *closure_owner.borrow_mut() = Some(Closure::wrap(Box::new(move |time: f64| {
+        app_holder_captured.borrow_mut().on_animation_frame(time);
+        request_animation_frame(closure_owner_captured.borrow().as_ref().unwrap());
+    }) as Box<dyn FnMut(f64)>));
+    request_animation_frame(closure_owner.borrow().as_ref().unwrap());
+    Ok(())
 }
 
 impl MyApp {
