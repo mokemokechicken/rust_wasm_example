@@ -120,6 +120,11 @@ impl MyApp {
         self.render();
         true
     }
+
+    pub fn dummy(&mut self) {
+        // error
+        log(&format!("i={}", &self.i));
+    }
 }
 
 fn request_animation_frame(f: &Closure<dyn FnMut(f64)>) {

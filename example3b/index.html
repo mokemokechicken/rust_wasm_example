@@ -25,7 +25,10 @@
         await init();
         const myApp = wasm.MyApp.new({canvas_id: "canvas", initial_n_balls: 1000});
         myApp.init();
-        wasm.start_animation(myApp);
+        wasm.start_animation(myApp); // 所有権がRust側に移っている
+        setTimeout(function () {
+          console.log(myApp.dummy()); // Uncaught Error: null pointer passed to rust
+        }, 1000);
       }
       run();
     </script>
