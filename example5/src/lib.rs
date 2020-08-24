@@ -36,7 +36,9 @@ pub fn start() {
             app_for_closure.borrow_mut().on_click(e);
         }) as Box<dyn FnMut(JsValue)>);
         // Closure to js_sys::Function: .as_ref().unchecked_ref()
-        document().set_onclick(Some(c.as_ref().unchecked_ref()));
+        document()
+            .add_event_listener_with_callback("click", c.as_ref().unchecked_ref())
+            .unwrap();
         c.forget(); // c を Rustのメモリ管理から外して JSのGCにわたす
     }
 }
