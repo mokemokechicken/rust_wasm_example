@@ -95,7 +95,10 @@ impl MyApp {
 
     pub fn on_click(&mut self, _event: JsValue) {
         self.clicks += 1;
+        // 仮にこれをselfが持っていれば渡せることになる
+        let x: Rc<RefCell<MyApp>> = Rc::new(RefCell::new(MyApp::new()));
         spawn_local(my_async_process(self.clicks));
+        spawn_local(my_async_process_with_ref_cell(x.clone(), self.clicks));
         spawn_local(my_async_process_with_raw_pointer(
             self as *mut MyApp,
             self.clicks,
@@ -107,6 +110,12 @@ pub async fn my_async_process(param: u32) {
     // 何か await とかしたりできる(fetchとか)
     // spawn_local() で使えるのは static な 参照しかないが、 my_app_mut() はそれを満たしている。
     my_app_mut().async_count += param;
+}
+
+pub async fn my_async_process_with_ref_cell(my_app: Rc<RefCell<MyApp>>, param: u32) {
+    // 何か await とかしたりできる(fetchとか)
+    // spawn_local() で使えるのは static な 参照しかないが、 Rcに包まれたものは有効。
+    my_app.borrow_mut().async_count += param;
 }
 
 pub async fn my_async_process_with_raw_pointer(my_app: *mut MyApp, param: u32) {
