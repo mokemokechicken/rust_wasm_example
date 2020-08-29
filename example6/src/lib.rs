@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -12,20 +12,20 @@ macro_rules! log {
     }
 }
 
-static mut MY_APP: Option<Rc<RefCell<MyApp>>> = None;
+static mut MY_APP: Option<Box<MyApp>> = None;
 
 pub fn init_my_app() {
     unsafe {
-        MY_APP = Some(Rc::new(RefCell::new(MyApp::new())));
+        MY_APP = Some(Box::new(MyApp::new()));
     }
 }
 
-pub fn my_app() -> Ref<'static, MyApp> {
-    unsafe { MY_APP.as_ref().unwrap().borrow() }
+pub fn my_app() -> &'static MyApp {
+    unsafe { MY_APP.as_ref().unwrap() }
 }
 
-pub fn my_app_mut() -> RefMut<'static, MyApp> {
-    unsafe { MY_APP.as_ref().unwrap().borrow_mut() }
+pub fn my_app_mut() -> &'static mut MyApp {
+    unsafe { MY_APP.as_mut().unwrap() }
 }
 
 #[wasm_bindgen]
@@ -35,6 +35,11 @@ pub fn start() {
     init_my_app();
     let closure_captured = Rc::new(RefCell::new(None));
     let closure_cloned = Rc::clone(&closure_captured);
+
+    let mut x = my_app_mut();
+    x.clicks += 1;
+    let y = my_app();
+    log!("clicks={}", y.clicks);
 
     // setup requestAnimationFrame Loop
     {
@@ -88,7 +93,7 @@ impl MyApp {
         }
     }
 
-    pub fn on_click(&mut self, event: JsValue) {
+    pub fn on_click(&mut self, _event: JsValue) {
         self.clicks += 1;
         spawn_local(my_async_process(self.clicks));
     }
