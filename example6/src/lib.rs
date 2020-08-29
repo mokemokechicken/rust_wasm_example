@@ -96,6 +96,10 @@ impl MyApp {
     pub fn on_click(&mut self, _event: JsValue) {
         self.clicks += 1;
         spawn_local(my_async_process(self.clicks));
+        spawn_local(my_async_process_with_raw_pointer(
+            self as *mut MyApp,
+            self.clicks,
+        ));
     }
 }
 
@@ -103,6 +107,14 @@ pub async fn my_async_process(param: u32) {
     // 何か await とかしたりできる(fetchとか)
     // spawn_local() で使えるのは static な 参照しかないが、 my_app_mut() はそれを満たしている。
     my_app_mut().async_count += param;
+}
+
+pub async fn my_async_process_with_raw_pointer(my_app: *mut MyApp, param: u32) {
+    // 何か await とかしたりできる(fetchとか)
+    // spawn_local() で使えるのは static な 参照しかないが、 Raw Pointerなら渡せる!!
+    unsafe {
+        (*my_app).async_count += param;
+    }
 }
 
 fn window() -> web_sys::Window {
