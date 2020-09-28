@@ -1,0 +1,26 @@
+[package]
+name = "rust_wasm_example"
+version = "0.1.0"
+authors = ["mokemokechicken"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2.67", features = ["serde-serialize"] }
+js-sys = "0.3.44"
+wasm-bindgen-futures = "0.4.17"
+console_error_panic_hook = "0.1.6"
+rand = { version="0.7.3", features =["wasm-bindgen"] }
+
+[dependencies.web-sys]
+version = "0.3.44"
+features = [
+  'Window',
+  'Document',
+  'Node',
+  'console',
+  'CanvasRenderingContext2d',
+  'HtmlCanvasElement',
+]
