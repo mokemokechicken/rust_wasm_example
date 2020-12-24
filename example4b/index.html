@@ -23,9 +23,17 @@
         myApp.show_team_info(); // -> There is no team.
 
         const ret = await myApp.load_data();
-        console.log(ret); // -> load data success!
+        console.log(ret); // -> "Success load_data()!"
 
         myApp.show_team_info(); // -> Team Name=Cats ...
+
+        const ret2 = await myApp.load_data2();
+        let s = "";
+        for (const ch of ret2) {
+          s += String.fromCharCode(ch);
+        }
+        console.log(s); // -> two json string
+
       }
       run();
     </script>
