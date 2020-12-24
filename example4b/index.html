@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+  </head>
+  <body>
+    <div id="display"></div>
+    <!-- Note the usage of `type=module` here as this is an ES6 module -->
+    <script type="module">
+      // Use ES module import syntax to import functionality from the module
+      // that we have compiled.
+      //
+      // Note that the `default` import is an initialization function which
+      // will "boot" the module and make it ready to use. Currently browsers
+      // don't support natively imported WebAssembly as an ES module, but
+      // eventually the manual initialization won't be required!
+      import init, * as wasm from './pkg/rust_wasm_example.js';
+
+      async function run() {
+        await init();
+        const myApp = wasm.MyApp.new();
+
+        myApp.show_team_info(); // -> There is no team.
+
+        const ret = await myApp.load_data();
+        console.log(ret); // -> load data success!
+
+        myApp.show_team_info(); // -> Team Name=Cats ...
+      }
+      run();
+    </script>
+  </body>
+</html>

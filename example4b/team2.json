@@ -1,0 +1,15 @@
+{
+  "name": "Dogs",
+  "members": [
+    {
+      "name": "Emi",
+      "age": 33,
+      "role": "member"
+    },
+    {
+      "name": "Peter",
+      "age": 14,
+      "role": "assistant"
+    }
+  ]
+}
