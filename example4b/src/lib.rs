@@ -79,21 +79,17 @@ impl MyApp {
         let mut future_list: Vec<_> = Vec::new();
 
         for path in path_list {
-            let future = MyApp::json_request(path, true).and_then(|value| async move {
-                let ab: ArrayBuffer = value.dyn_into().unwrap();
-                Ok(ab)
-            });
+            let future = MyApp::json_request(path, true);
             future_list.push(future);
         }
-        let future = join_all(future_list).map(move |vs: Vec<Result<ArrayBuffer, JsValue>>| {
+        let future = join_all(future_list).map(move |vs: Vec<Result<JsValue, JsValue>>| {
             let mut total_size: u32 = 0;
             let mut array_buffers: Vec<ArrayBuffer> = Vec::new();
             for result_ab in vs {
-                let ab: ArrayBuffer = result_ab.unwrap();
+                let ab: ArrayBuffer = result_ab.unwrap().dyn_into().unwrap();
                 log(&format!("len={}", ab.byte_length()));
                 total_size += ab.byte_length();
                 array_buffers.push(ab);
-                // let type_buffer: js_sys::Uint8Array = js_sys::Uint8Array::new(&ab);
             }
             let buffer: js_sys::Uint8Array = js_sys::Uint8Array::new_with_length(total_size);
             let mut pos: u32 = 0;
